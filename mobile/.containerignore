@@ -1,0 +1,8 @@
+build/
+.dart_tool/
+.idea/
+android/
+ios/
+macos/
+web/
+pubspec.lock

@@ -1,0 +1,59 @@
+# Flutter toolchain + web build, then a tiny static server.
+#
+# Nothing Flutter-related is installed on the host: this image carries the SDK,
+# compiles the app, and the final stage keeps only the built assets.
+#
+# The app is built for WEB, so it uses a CLIENT-SIDE ID. Building the same
+# lib/main.dart for iOS would use a mobile key instead - see lib/main.dart.
+# A client-side ID is public by design (it ships to every browser and can read
+# only one environment), so baking it into the image is fine. A *server* SDK key
+# would not be - that one stays in the server container's environment.
+
+# ---------------------------------------------------------------- build stage
+FROM docker.io/library/debian:bookworm-slim AS build
+
+ARG FLUTTER_VERSION=3.50.1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates curl git unzip xz-utils zip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Flutter refuses to run as root, so build as an ordinary user.
+RUN useradd -ms /bin/bash builder
+RUN git clone --depth 1 --branch "${FLUTTER_VERSION}" \
+        https://github.com/flutter/flutter.git /flutter \
+    && chown -R builder:builder /flutter
+
+USER builder
+ENV PATH="/flutter/bin:/flutter/bin/cache/dart-sdk/bin:${PATH}"
+RUN git config --global --add safe.directory /flutter \
+    && flutter config --no-analytics >/dev/null 2>&1 || true
+RUN flutter precache --web
+
+WORKDIR /app
+
+# Generate the web/ scaffolding somewhere else, then take only that folder, so
+# `flutter create` never overwrites our pubspec.yaml or lib/main.dart.
+RUN flutter create --platforms=web --project-name ld_quickstart_mobile /tmp/scaffold
+
+COPY --chown=builder:builder pubspec.yaml analysis_options.yaml ./
+RUN cp -r /tmp/scaffold/web ./web && flutter pub get
+
+COPY --chown=builder:builder lib ./lib
+
+# Fail the build on a real analysis error rather than shipping a broken app.
+RUN flutter analyze --no-fatal-infos
+
+ARG LD_CLIENT_SIDE_ID=""
+ARG LD_FLAG_KEY="combo-upsell-banner"
+ARG LD_DEMO_UNREACHABLE="false"
+RUN flutter build web --release \
+        --dart-define=LAUNCHDARKLY_CLIENT_SIDE_ID="${LD_CLIENT_SIDE_ID}" \
+        --dart-define=LD_FLAG_KEY="${LD_FLAG_KEY}" \
+        --dart-define=LD_DEMO_UNREACHABLE="${LD_DEMO_UNREACHABLE}"
+
+# ---------------------------------------------------------------- serve stage
+FROM docker.io/library/nginx:alpine
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/build/web /usr/share/nginx/html
+EXPOSE 80

@@ -1,0 +1,23 @@
+name: ld_quickstart_mobile
+description: >-
+  LaunchDarkly SDK Quickstart, session 3 - LaunchDarkly Flutter client-side SDK demo.
+  One screen whose content is driven by a boolean flag, updating live.
+publish_to: "none"
+version: 1.0.0
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Client-side SDK. Takes a MOBILE key (mob-...) on iOS/Android/desktop,
+  # or a client-side ID on web. Never a server SDK key.
+  launchdarkly_flutter_client_sdk: ^4.24.0
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

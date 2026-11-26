@@ -1,0 +1,30 @@
+# ASP.NET Core service, built and run entirely in containers.
+# Nothing .NET-related is installed on the host.
+
+# ---------------------------------------------------------------- build stage
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Restore first, on its own layer, so code edits don't re-download packages.
+COPY LdQuickstart.Server.csproj ./
+RUN dotnet restore
+
+COPY . ./
+RUN dotnet publish -c Release -o /app --no-restore
+
+# ---------------------------------------------------------------- run stage
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /app ./
+
+# Listen on 8080 inside the container. launchSettings.json is a dev-time file
+# and is not used here.
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+
+# Non-root. APP_UID is defined by the Microsoft base image.
+USER $APP_UID
+
+# The SERVER SDK key is supplied at run time (podman run -e LD_SDK_KEY=...).
+# It is never baked into the image and never committed.
+ENTRYPOINT ["dotnet", "LdQuickstart.Server.dll"]

@@ -1,0 +1,10 @@
+# Everything here is generated inside the container build, not on the host.
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.idea/
+*.iml
+.metadata
+build/
+pubspec.lock
+web/
