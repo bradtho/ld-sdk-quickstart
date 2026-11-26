@@ -70,6 +70,42 @@ const bool _demoUnreachable =
 // ---------------------------------------------------------------------------
 const bool _fallbackValue = false;
 
+/// The palette.
+///
+/// This deliberately does NOT use `colorSchemeSeed`. A seed makes Material 3
+/// derive every surface from one hue, which is how this screen ended up
+/// uniformly pink: one warm seed tints the lot.
+///
+/// Instead the colours are explicit and each one carries meaning, so the
+/// screen reads as state rather than decoration:
+///   green  = the flag is serving true      slate = serving false
+///   indigo = information about the SDK     amber = you are on the fallback
+class _Palette {
+  // Chrome
+  static const indigo = Color(0xFF4338CA);
+  static const teal = Color(0xFF0F766E);
+  static const amber = Color(0xFFB45309);
+  static const ink = Color(0xFF0F172A);
+  static const page = Color(0xFFF8FAFC);
+
+  // Flag serving TRUE - the feature is on
+  static const onBg = Color(0xFFD1FAE5);
+  static const onFg = Color(0xFF065F46);
+
+  // Flag serving FALSE - the feature is off
+  static const offBg = Color(0xFFE2E8F0);
+  static const offFg = Color(0xFF334155);
+
+  // The teaching panel - informational
+  static const infoBg = Color(0xFFE0E7FF);
+  static const infoFg = Color(0xFF312E81);
+
+  // Fallback in use - a warning, not an error. Nothing is broken; you are
+  // simply not looking at a value LaunchDarkly decided.
+  static const warnBg = Color(0xFFFEF3C7);
+  static const warnFg = Color(0xFF78350F);
+}
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const ComboUpsellApp());
@@ -82,8 +118,25 @@ class ComboUpsellApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
         title: 'LaunchDarkly SDK Quickstart',
         theme: ThemeData(
-          colorSchemeSeed: const Color(0xFFEE5B33),
           useMaterial3: true,
+          scaffoldBackgroundColor: _Palette.page,
+          colorScheme: const ColorScheme.light(
+            primary: _Palette.indigo,
+            onPrimary: Colors.white,
+            primaryContainer: _Palette.infoBg,
+            onPrimaryContainer: _Palette.infoFg,
+            secondary: _Palette.teal,
+            onSecondary: Colors.white,
+            tertiary: _Palette.amber,
+            onTertiary: Colors.white,
+            surface: Colors.white,
+            onSurface: _Palette.ink,
+          ),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: _Palette.indigo,
+            foregroundColor: Colors.white,
+            elevation: 0,
+          ),
         ),
         home: const ComboUpsellScreen(),
       );
@@ -258,7 +311,6 @@ class _ComboUpsellScreenState extends State<ComboUpsellScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Counter order'),
-        backgroundColor: theme.colorScheme.inversePrimary,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -267,29 +319,31 @@ class _ComboUpsellScreenState extends State<ComboUpsellScreen> {
           children: [
             // ---- the flag-driven content -----------------------------------
             if (_showBanner)
-              Card(
-                color: theme.colorScheme.primaryContainer,
-                child: const Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Make it a combo?',
-                          style: TextStyle(
-                              fontSize: 22, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 8),
-                      Text('Add a drink and a side for \$2.50 more.'),
-                    ],
-                  ),
+              const _StateCard(
+                background: _Palette.onBg,
+                foreground: _Palette.onFg,
+                accent: _Palette.teal,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Make it a combo?',
+                        style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: _Palette.onFg)),
+                    SizedBox(height: 8),
+                    Text('Add a drink and a side for \$2.50 more.',
+                        style: TextStyle(color: _Palette.onFg)),
+                  ],
                 ),
               )
             else
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Text('No combo upsell for this order.',
-                      style: theme.textTheme.bodyLarge),
-                ),
+              const _StateCard(
+                background: _Palette.offBg,
+                foreground: _Palette.offFg,
+                accent: _Palette.offFg,
+                child: Text('No combo upsell for this order.',
+                    style: TextStyle(fontSize: 16, color: _Palette.offFg)),
               ),
 
             const SizedBox(height: 24),
@@ -308,16 +362,19 @@ class _ComboUpsellScreenState extends State<ComboUpsellScreen> {
 
             const SizedBox(height: 24),
             // ---- the teaching panel ----------------------------------------
-            Card(
-              color: theme.colorScheme.surfaceContainerHighest,
+            _StateCard(
+              background: _Palette.infoBg,
+              foreground: _Palette.infoFg,
+              accent: _Palette.indigo,
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.zero,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('What the SDK just did',
-                        style: theme.textTheme.titleMedium),
-                    const Divider(),
+                        style: theme.textTheme.titleMedium
+                            ?.copyWith(color: _Palette.infoFg)),
+                    const Divider(color: _Palette.indigo, height: 20),
                     _row('credential', _credentialKind),
                     _row('flag', _flagKey),
                     _row('context', 'user:${_user.key}'),
@@ -329,7 +386,9 @@ class _ComboUpsellScreenState extends State<ComboUpsellScreen> {
                     _row('fallback value', '$_fallbackValue'),
                     _row('SDK ready', _ready ? 'yes' : 'no'),
                     const Divider(),
-                    Text(_status, style: theme.textTheme.bodySmall),
+                    Text(_status,
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: _Palette.infoFg)),
                   ],
                 ),
               ),
@@ -337,16 +396,15 @@ class _ComboUpsellScreenState extends State<ComboUpsellScreen> {
 
             if (_servedFallback) ...[
               const SizedBox(height: 16),
-              Card(
-                color: theme.colorScheme.errorContainer,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    'This screen is showing the fallback value, not a value '
-                    'from LaunchDarkly. The reason above says which of the '
-                    'fallback cases you are looking at.',
-                    style: TextStyle(color: theme.colorScheme.onErrorContainer),
-                  ),
+              const _StateCard(
+                background: _Palette.warnBg,
+                foreground: _Palette.warnFg,
+                accent: _Palette.amber,
+                child: Text(
+                  'This screen is showing the fallback value, not a value '
+                  'from LaunchDarkly. The reason above says which of the '
+                  'fallback cases you are looking at.',
+                  style: TextStyle(color: _Palette.warnFg),
                 ),
               ),
             ],
@@ -369,6 +427,52 @@ class _ComboUpsellScreenState extends State<ComboUpsellScreen> {
                 child: Text(value,
                     style: const TextStyle(fontFamily: 'monospace'))),
           ],
+        ),
+      );
+}
+
+
+/// A panel that says what it means through colour: a tinted background and a
+/// matching accent stripe down the leading edge.
+///
+/// The stripe is composed as a sibling rather than a one-sided
+/// `Border(left: ...)`, because Flutter asserts if you combine a non-uniform
+/// border with a borderRadius.
+class _StateCard extends StatelessWidget {
+  const _StateCard({
+    required this.background,
+    required this.foreground,
+    required this.accent,
+    required this.child,
+  });
+
+  final Color background;
+  final Color foreground;
+  final Color accent;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: ColoredBox(
+          color: background,
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(width: 5, child: ColoredBox(color: accent)),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: DefaultTextStyle.merge(
+                      style: TextStyle(color: foreground),
+                      child: child,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       );
 }
